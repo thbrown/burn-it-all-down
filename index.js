@@ -183,6 +183,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
             }
         }
 
+        /*
         if(window.history.pushState) {
             try {
                 const colorState = encodeGridStateToBase64();
@@ -191,7 +192,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
             } catch (e) {
                 console.warn("Error", e);
             }
-        }
+        }*/
 
         // Check for win after each click
         if (checkWin()) {
