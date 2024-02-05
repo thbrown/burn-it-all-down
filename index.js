@@ -39,12 +39,12 @@ document.addEventListener('DOMContentLoaded', (event) => {
 
     // Function to add a column to the grid
     const addColumn = () => {
-        window.location.href = '/?width=' + (squaresPerRow + 1) + '&height=' + squaresPerColumn;
+        window.location.href = '/escape-room-windows-2d/?width=' + (squaresPerRow + 1) + '&height=' + squaresPerColumn;
     };
 
     // Function to add a row to the grid
     const addRow = () => {
-        window.location.href = '/?width=' + squaresPerRow + '&height=' + (squaresPerColumn + 1);
+        window.location.href = '/escape-room-windows-2d/?width=' + squaresPerRow + '&height=' + (squaresPerColumn + 1);
     };
 
     // Function to replay the game
