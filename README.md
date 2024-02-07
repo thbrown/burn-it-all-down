@@ -1,4 +1,4 @@
-Live at: https://thbrown.github.io/escape-room-windows-2d/?width=1&height=1
+Live at: https://thbrown.github.io/burn-it-all-down/?width=1&height=1
 
 Run locally with (assuming you have node/npm installed)
 

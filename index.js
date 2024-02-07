@@ -287,6 +287,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
     const replay = () => {
         closeModal();
         gameContainer.innerHTML = '';
+        decodedColors = null;
         initGameGrid();
         gameWon = false;
     };
@@ -299,7 +300,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 height: squaresPerColumn,
                 colors: colorState
             }
-            window.history.pushState(JSON.stringify(state), 'PIZZA', `/?colors=${colorState}&width=${squaresPerRow}&height=${squaresPerColumn}`);
+            window.history.pushState(JSON.stringify(state), '', `${document.location.pathname}?colors=${colorState}&width=${squaresPerRow}&height=${squaresPerColumn}`);
             console.log("Modifying url", colorState, squaresPerRow, squaresPerColumn);
         } catch (e) {
             console.warn("Problem pushing state", e);
@@ -334,7 +335,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
         let index = Array.from(clickedSquare.parentNode.children).indexOf(clickedSquare);
         let row = Math.floor(index / squaresPerRow);
         let col = index % squaresPerRow;
-
 
         // Change color of clicked square and adjacent squares
         for (let i = -1; i <= 1; i++) {
