@@ -283,16 +283,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
         document.getElementById('win-modal').style.display = 'none';
     };
 
-    // Function to add a column to the grid
-    const addColumn = () => {
-        window.location.href = '/escape-room-windows-2d/?width=' + (parseInt(squaresPerRow) + 1) + '&height=' + squaresPerColumn;
-    };
-
-    // Function to add a row to the grid
-    const addRow = () => {
-        window.location.href = '/escape-room-windows-2d/?width=' + squaresPerRow + '&height=' + (parseInt(squaresPerColumn) + 1);
-    };
-
     // Function to replay the game
     const replay = () => {
         closeModal();
@@ -301,8 +291,21 @@ document.addEventListener('DOMContentLoaded', (event) => {
         gameWon = false;
     };
 
-    document.getElementById('add-column').addEventListener('click', addColumn);
-    document.getElementById('add-row').addEventListener('click', addRow);
+    const pushStateToUrl = () => {
+        try {
+            const colorState = encodeGridStateToBase64();
+            const state = {
+                width: squaresPerRow,
+                height: squaresPerColumn,
+                colors: colorState
+            }
+            window.history.pushState(JSON.stringify(state), 'PIZZA', `/?colors=${colorState}&width=${squaresPerRow}&height=${squaresPerColumn}`);
+            console.log("Modifying url", colorState, squaresPerRow, squaresPerColumn);
+        } catch (e) {
+            console.warn("Problem pushing state", e);
+        }
+    }
+
     document.getElementById('replay').addEventListener('click', replay);
 
     window.addEventListener("popstate", (e) => {
@@ -353,18 +356,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
         }
 
         if(window.history.pushState) {
-            try {
-                const colorState = encodeGridStateToBase64();
-                const state = {
-                    width: squaresPerRow,
-                    height: squaresPerColumn,
-                    colors: colorState
-                }
-                window.history.pushState(JSON.stringify(state), '', `/?colors=${colorState}&width=${squaresPerRow}&height=${squaresPerColumn}`);
-                console.log("Modifying url", colorState, squaresPerRow, squaresPerColumn);
-            } catch (e) {
-                console.warn("Error", e);
-            }
+            pushStateToUrl();
         }
 
         // Check for win after each click
@@ -376,4 +368,5 @@ document.addEventListener('DOMContentLoaded', (event) => {
 
     // Initialize the game grid
     initGameGrid();
+    pushStateToUrl();
 });
