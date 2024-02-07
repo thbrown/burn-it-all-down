@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
     const colors = ['red', 'blue', 'green'];
     const squareSize = 48; // The size of each square
     const queryParams = new URLSearchParams(window.location.search);
-    console.log("Params", queryParams.get('width'), queryParams.get('height'));
+    console.log("Params", queryParams.get('width'), queryParams.get('height'), queryParams.get('colors'));
     let gameWon = false;
 
     // Set the innerHTML to the appropriate SVG based on the color
@@ -32,13 +32,215 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 </g>
             </g>
         </svg>`;
+
+    const colorMap = {
+        'red': 0, // Binary: 00
+        'blue': 1, // Binary: 01
+        'green': 2 // Binary: 10
+    };
     
+    const reverseColorMap = {
+        0: 'red', 
+        1: 'blue', 
+        2: 'green'
+    };
+    
+    // Function to encode the grid state to a binary string
+    const encodeToBinary = (gridState) => {
+        let binaryString = '';
+        gridState.forEach(color => {
+            const binaryCode = colorMap[color].toString(2).padStart(2, '0');
+            binaryString += binaryCode;
+        });
+        return binaryString;
+    };
+    
+    // Function to encode the grid state to base64
+    const encodeGridStateToBase64 = () => {
+        const squares = document.querySelectorAll('.square');
+        const gridState = Array.from(squares).map(square => square.style.backgroundColor);
+        //console.log("Grid State", gridState);
+        const binaryString = encodeToBinary(gridState);
+        return binaryToUrlSafeBase64(binaryString);
+    };
+
+    // Function to convert a binary string to a URL-safe base64 string
+    const binaryToUrlSafeBase64 = (binaryString) => {
+        // Pad the binary string so that its length is a multiple of 8
+        binaryString = binaryString.padEnd(Math.ceil(binaryString.length / 8) * 8, '0');
+        const byteArrays = [];
+        for (let i = 0; i < binaryString.length; i += 8) {
+            byteArrays.push(parseInt(binaryString.substring(i, i + 8), 2));
+        }
+        const uint8Array = new Uint8Array(byteArrays);
+        let base64String = btoa(String.fromCharCode.apply(null, uint8Array));
+        // Make it URL-safe
+        base64String = base64String.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        return base64String;
+    };
+    
+    // Function to decode the base64 encoded grid state
+    const decodeBase64GridState = (base64State, rows, cols) => {
+        const binaryString = urlSafeBase64ToBinary(base64State);
+        const expectedLength = rows * cols * 2; // Each color is represented by 2 bits
+
+        // Trim the binary string to the expected length in case there is padding
+        const trimmedBinaryString = binaryString.substring(0, expectedLength);
+
+        if (trimmedBinaryString.length !== expectedLength) {
+            throw new Error("Decoded binary string does not match the expected length.")
+        }
+
+        const gridState = [];
+        for (let i = 0; i < trimmedBinaryString.length; i += 2) {
+            const colorIndex = parseInt(trimmedBinaryString.substring(i, i + 2), 2);
+            gridState.push(reverseColorMap[colorIndex]);
+        }
+
+        return gridState;
+    };
+
+    // Function to decode a URL-safe base64 string to a binary string
+    const urlSafeBase64ToBinary = (base64String) => {
+        // Convert URL-safe base64 to standard base64
+        base64String = base64String.replace(/-/g, '+').replace(/_/g, '/');
+        // Add any stripped '=' padding back if necessary
+        switch (base64String.length % 4) {
+            case 2: base64String += '=='; break;
+            case 3: base64String += '='; break;
+            default: break; // No padding needed
+        }
+        const decodedString = atob(base64String);
+        let binaryString = '';
+        for (let i = 0; i < decodedString.length; i++) {
+            binaryString += decodedString.charCodeAt(i).toString(2).padStart(8, '0');
+        }
+        return binaryString;
+    };
+
+    // Function to initialize the game grid
+    const initGameGrid = () => {
+        console.log("INIT GRID", decodedColors);
+
+        // Set the CSS Grid layout columns dynamically
+        gameContainer.style.gridTemplateColumns = `repeat(${squaresPerRow}, ${squareSize}px)`;
+
+        // Create squares and append to the game container
+        for (let i = 0; i < totalSquares; i++) {
+            let square = document.createElement('div');
+            square.classList.add('square');
+            square.style.width = `${squareSize}px`;
+            square.style.height = `${squareSize}px`;
+            let randomColor = decodedColors === null ? colors[Math.floor(Math.random() * colors.length)] : decodedColors[i];
+            square.style.backgroundColor = randomColor;
+
+            // Set the innerHTML to the appropriate SVG based on the color
+            if (randomColor === 'red') {
+                square.innerHTML = RED_SVG;
+            } else if (randomColor === 'blue') {
+                square.innerHTML = BLUE_SVG;
+            } else if (randomColor === 'green') {
+                square.innerHTML = GREEN_SVG;
+            }
+
+            // Append the square with the icon to the game container
+            gameContainer.appendChild(square);
+        }
+        
+        //const colorState = encodeGridStateToBase64();
+        //console.log("Checking game", decodeBase64GridState(colorState, squaresPerColumn, squaresPerRow), isGameWinnable(colorState, squaresPerColumn, squaresPerRow));
+        /*if (!isGameWinnable(colorState, squaresPerColumn, squaresPerRow)) {
+            console.log("Not Winnable");
+            gameContainer.innerHTML = '';
+            initGameGrid();
+        } else {
+            console.log("Winnable")
+        }
+        */
+    };
+
+    // Helper function to get the adjacent indices for a given index
+    const getAdjacentIndices = (index) => {
+        //console.log("get adjacent for ", index)
+
+        // Change color of clicked square and adjacent squares
+        let row = Math.floor(index / squaresPerRow);
+        let col = index % squaresPerRow;
+
+        const adjInd = [];
+        for (let i = -1; i <= 1; i++) {
+            for (let j = -1; j <= 1; j++) {
+                if (i === 0 && j === 0) {
+                    // Skip myself
+                } else {
+                    // Adjacent squares
+                    let adjacentRow = row + i;
+                    let adjacentCol = col + j;
+                    if (adjacentRow >= 0 && adjacentRow < squaresPerColumn && adjacentCol >= 0 && adjacentCol < squaresPerRow) {
+                        let adjacentIndex = adjacentRow * squaresPerRow + adjacentCol;
+                        adjInd.push(adjacentIndex);
+                    }
+                }
+            }
+        }
+        return adjInd;
+    };
+
+    const isGameWinnable = (base64State, rows, cols) => {
+        const gridState = decodeBase64GridState(base64State, rows, cols);
+        console.log("Checking game", gridState);
+    
+        const visitedStates = new Set(); // To track visited states
+        const stack = []; // Stack for iterative exploration
+    
+        // Start with the initial state and index 0
+        stack.push({ currentState: gridState.map(color => colorMap[color]), index: 0 });
+    
+        // Iterative exploration using a stack
+        while (stack.length > 0) {
+            const { currentState, index } = stack.pop();
+    
+            if (index >= currentState.length) {
+                continue; // Exhausted indexes, skip to next state
+            }
+    
+            // Base case: check if all squares are red
+            const isWinning = currentState.every(color => color === colorMap['red']);
+            if (isWinning) {
+                return true; // Winning state found
+            }
+    
+            // Convert the current state to a string to check if it's been visited
+            const stateString = currentState.join('') + "-" + index;
+            if (visitedStates.has(stateString)) {
+                continue; // This state has already been visited
+            }
+            visitedStates.add(stateString); // Mark this state as visited
+    
+            // Try changing the color of the current square and adjacent squares
+            const adjacentIndices = getAdjacentIndices(index);
+            const nextState = [...currentState]; // Clone the current state
+            nextState[index] = (nextState[index] + 1) % 3; // Change current square
+    
+            adjacentIndices.forEach(adjIndex => {
+                nextState[adjIndex] = (nextState[adjIndex] + 1) % 3; // Change adjacent squares
+            });
+    
+            // Push next state to the stack to explore it
+            stack.push({ currentState: nextState, index: 0 });
+            // Push current state with incremented index to explore other possibilities
+            stack.push({ currentState: currentState, index: index + 1 });
+        }
+    
+        return false; // No winning state found
+    };
 
     // Calculate the number of squares that fit per row/column
-    const squaresPerRow = queryParams.get('width') ?? Math.floor(window.innerWidth / squareSize);
-    const squaresPerColumn = queryParams.get('height') ?? Math.floor(window.innerHeight / squareSize);
-    const totalSquares = squaresPerRow * squaresPerColumn;
-    console.log("Number", squaresPerRow, squaresPerColumn);
+    let squaresPerRow = queryParams.get('width') ?? Math.floor(window.innerWidth / squareSize);
+    let squaresPerColumn = queryParams.get('height') ?? Math.floor(window.innerHeight / squareSize);
+    let decodedColors = queryParams.get('colors') ? decodeBase64GridState(queryParams.get('colors'), squaresPerColumn, squaresPerRow) : null;
+    let totalSquares = squaresPerRow * squaresPerColumn;
+    console.log("Number", squaresPerRow, squaresPerColumn, decodedColors);
 
     // Function to change color of a square
     const changeColor = (square) => {
@@ -103,218 +305,22 @@ document.addEventListener('DOMContentLoaded', (event) => {
     document.getElementById('add-row').addEventListener('click', addRow);
     document.getElementById('replay').addEventListener('click', replay);
 
-    const colorMap = {
-        'red': 0, // Binary: 00
-        'blue': 1, // Binary: 01
-        'green': 2 // Binary: 10
-    };
-    
-    const reverseColorMap = {
-        0: 'red', 
-        1: 'blue', 
-        2: 'green'
-    };
-    
-    // Function to encode the grid state to a binary string
-    const encodeToBinary = (gridState) => {
-        let binaryString = '';
-        gridState.forEach(color => {
-            const binaryCode = colorMap[color].toString(2).padStart(2, '0');
-            binaryString += binaryCode;
-        });
-        return binaryString;
-    };
-    
-    // Function to encode the grid state to base64
-    const encodeGridStateToBase64 = () => {
-        const squares = document.querySelectorAll('.square');
-        const gridState = Array.from(squares).map(square => square.style.backgroundColor);
-        console.log("Grid State", gridState);
-        const binaryString = encodeToBinary(gridState);
-        return binaryToUrlSafeBase64(binaryString);
-    };
-
-    // Function to convert a binary string to a URL-safe base64 string
-    const binaryToUrlSafeBase64 = (binaryString) => {
-        // Pad the binary string so that its length is a multiple of 8
-        binaryString = binaryString.padEnd(Math.ceil(binaryString.length / 8) * 8, '0');
-        const byteArrays = [];
-        for (let i = 0; i < binaryString.length; i += 8) {
-            byteArrays.push(parseInt(binaryString.substring(i, i + 8), 2));
+    window.addEventListener("popstate", (e) => {
+        console.log("Popstate raw", e.state);
+        let prevState = null;
+        try {
+            prevState = JSON.parse(e.state);
+        } catch (e) {
+            prevState = {};
         }
-        const uint8Array = new Uint8Array(byteArrays);
-        let base64String = btoa(String.fromCharCode.apply(null, uint8Array));
-        // Make it URL-safe
-        base64String = base64String.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-        return base64String;
-    };
-    
-    // Function to decode the base64 encoded grid state
-    const decodeBase64GridState = (base64State, rows, cols) => {
-        const binaryString = urlSafeBase64ToBinary(base64State);
-        const expectedLength = rows * cols * 2; // Each color is represented by 2 bits
-
-        // Trim the binary string to the expected length in case there is padding
-        const trimmedBinaryString = binaryString.substring(0, expectedLength);
-
-        if (trimmedBinaryString.length !== expectedLength) {
-            throw new Error("Decoded binary string does not match the expected length.")
-        }
-
-        const gridState = [];
-        for (let i = 0; i < trimmedBinaryString.length; i += 2) {
-            const colorIndex = parseInt(trimmedBinaryString.substring(i, i + 2), 2);
-            gridState.push(reverseColorMap[colorIndex]);
-        }
-
-        return gridState;
-    };
-
-    // Function to decode a URL-safe base64 string to a binary string
-    const urlSafeBase64ToBinary = (base64String) => {
-        // Convert URL-safe base64 to standard base64
-        base64String = base64String.replace(/-/g, '+').replace(/_/g, '/');
-        // Add any stripped '=' padding back if necessary
-        switch (base64String.length % 4) {
-            case 2: base64String += '=='; break;
-            case 3: base64String += '='; break;
-            default: break; // No padding needed
-        }
-        const decodedString = atob(base64String);
-        let binaryString = '';
-        for (let i = 0; i < decodedString.length; i++) {
-            binaryString += decodedString.charCodeAt(i).toString(2).padStart(8, '0');
-        }
-        return binaryString;
-    };
-    
-    // Function to apply an encoded base64 state to the grid
-    const applyBase64GridState = (base64State, rows, cols) => {
-        const decodedState = decodeBase64GridState(base64State, rows, cols);
-        const squares = document.querySelectorAll('.square');
-        squares.forEach((square, index) => {
-            const row = Math.floor(index / cols);
-            const col = index % cols;
-            square.style.backgroundColor = decodedState[row][col];
-        });
-    };
-
-
-    // Function to initialize the game grid
-    const initGameGrid = () => {
-        // Set the CSS Grid layout columns dynamically
-        gameContainer.style.gridTemplateColumns = `repeat(${squaresPerRow}, ${squareSize}px)`;
-
-        // Create squares and append to the game container
-        for (let i = 0; i < totalSquares; i++) {
-            let square = document.createElement('div');
-            square.classList.add('square');
-            square.style.width = `${squareSize}px`;
-            square.style.height = `${squareSize}px`;
-            let randomColor = colors[Math.floor(Math.random() * colors.length)];
-            square.style.backgroundColor = randomColor;
-
-            // Set the innerHTML to the appropriate SVG based on the color
-            if (randomColor === 'red') {
-                square.innerHTML = RED_SVG;
-            } else if (randomColor === 'blue') {
-                square.innerHTML = BLUE_SVG;
-            } else if (randomColor === 'green') {
-                square.innerHTML = GREEN_SVG;
-            }
-
-            // Append the square with the icon to the game container
-            gameContainer.appendChild(square);
-        }
-
-        /*
-        const colorState = encodeGridStateToBase64();
-        console.log("Checking game", decodeBase64GridState(colorState, squaresPerColumn, squaresPerRow));
-        if (!isGameWinnable(colorState, squaresPerColumn, squaresPerRow)) {
-            console.log("Not Winnable");
-            gameContainer.innerHTML = '';
-            initGameGrid();
-        } else {
-            console.log("Winnable")
-        }*/
-    };
-
-    // Helper function to get the adjacent indices for a given index
-    const getAdjacentIndices = (index) => {
-        //console.log("get adjacent for ", index)
-
-        // Change color of clicked square and adjacent squares
-        let row = Math.floor(index / squaresPerRow);
-        let col = index % squaresPerRow;
-
-        const adjInd = [];
-        for (let i = -1; i <= 1; i++) {
-            for (let j = -1; j <= 1; j++) {
-                if (i === 0 && j === 0) {
-                    // Skip myself
-                } else {
-                    // Adjacent squares
-                    let adjacentRow = row + i;
-                    let adjacentCol = col + j;
-                    if (adjacentRow >= 0 && adjacentRow < squaresPerColumn && adjacentCol >= 0 && adjacentCol < squaresPerRow) {
-                        let adjacentIndex = adjacentRow * squaresPerRow + adjacentCol;
-                        adjInd.push(adjacentIndex);
-                    }
-                }
-            }
-        }
-        return adjInd;
-    };
-
-    // Function to check if a game state is winnable
-    const isGameWinnable = (base64State, rows, cols) => {
-        const gridState = decodeBase64GridState(base64State, rows, cols);
-        //console.log("Sub checking game", gridState);
-        //console.log("Sub checking game", reverseColorMap, gridState.map(color => colorMap[color]));
-
-        const visitedStates = new Set(); // To track visited states
-
-        // Helper function for recursion
-        const exploreState = (currentState, index) => {
-            //console.log("BASE CASE ", currentState);
-
-            if(index >= currentState.length) {
-                return false;
-            }
-            // Base case: check if all squares are red
-            const isWinning = currentState.every(color => color === colorMap['red']);
-            if (isWinning) {
-                return true;
-            }
-            
-            // Convert the current state to a string to check if it's been visited
-            const stateString = currentState.join('');
-            if (visitedStates.has(stateString)) {
-                return false; // This state has already been visited
-            }
-            visitedStates.add(stateString); // Mark this state as visited
-            //console.log("VISITED", stateString);
-
-            // Try changing the color of the current square and adjacent squares
-            const adjacentIndices = getAdjacentIndices(index);
-            //console.log("ADJACENT", adjacentIndices);
-            const nextState = [...currentState]; // Clone the current state
-            //console.log("P CHANGE", nextState[index],(nextState[index] + 1) % 3);
-            nextState[index] = (nextState[index] + 1) % 3; // Change current square
-
-            adjacentIndices.forEach(adjIndex => {
-                //console.log("S CHANGE", nextState[index],(nextState[index] + 1) % 3);
-                nextState[adjIndex] = (nextState[adjIndex] + 1) % 3; // Change adjacent squares
-            });
-
-            //console.log("Okay, trying", nextState);
-
-            // Recursively explore the next state or move to the next index
-            return exploreState(nextState, 0) || exploreState(currentState, index + 1);
-        };
-
-        return exploreState(gridState.map(color => colorMap[color]), 0);
-    };
+        console.log("Popstate", prevState);
+        squaresPerRow = prevState.width ?? Math.floor(window.innerWidth / squareSize);
+        squaresPerColumn = prevState.height ?? Math.floor(window.innerHeight / squareSize);
+        decodedColors = prevState.colors ? decodeBase64GridState(prevState.colors, squaresPerColumn, squaresPerRow) : null;
+        totalSquares = squaresPerRow * squaresPerColumn;
+        gameContainer.innerHTML = '';
+        initGameGrid();
+    });
 
     // Set up click event for each square
     gameContainer.addEventListener('click', (event) => {
@@ -346,17 +352,20 @@ document.addEventListener('DOMContentLoaded', (event) => {
             }
         }
 
-
-        /*
         if(window.history.pushState) {
             try {
                 const colorState = encodeGridStateToBase64();
-                window.history.pushState('', 'Title', `/?state=${colorState}&width=${squaresPerRow}`&`height=${squaresPerColumn}`);
-                console.log("Color State", colorState);
+                const state = {
+                    width: squaresPerRow,
+                    height: squaresPerColumn,
+                    colors: colorState
+                }
+                window.history.pushState(JSON.stringify(state), '', `/?colors=${colorState}&width=${squaresPerRow}&height=${squaresPerColumn}`);
+                console.log("Modifying url", colorState, squaresPerRow, squaresPerColumn);
             } catch (e) {
                 console.warn("Error", e);
             }
-        }*/
+        }
 
         // Check for win after each click
         if (checkWin()) {
@@ -364,22 +373,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
             gameWon = true;
         }
     });
-
-    // Add a resize event listener to re-initialize the game when the window is resized
-    // This breaks the adjacent squares logic
-    /*
-    window.addEventListener('resize', () => {
-        // Clear the current grid
-        gameContainer.innerHTML = '';
-
-        // Re-initialize the game grid
-        initGameGrid();
-
-        // You will also want to reset any game state if necessary
-        gameWon = false;
-        winMessage.textContent = '';
-    });
-    */
 
     // Initialize the game grid
     initGameGrid();
