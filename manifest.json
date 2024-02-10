@@ -1,0 +1,16 @@
+{
+    "short_name": "Burn it All Down",
+    "name": "Burn it All Down",
+    "icons": [
+      {
+        "src": "/logo192.png",
+        "sizes": "192x192",
+        "type": "image/png"
+      }
+    ],
+    "start_url": "/?source=applaunch",
+    "background_color": "#ff0000",
+    "display": "browser",
+    "scope": "/",
+    "theme_color": "#ff0000"
+  }
