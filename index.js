@@ -1,3 +1,16 @@
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js');
+}
+
+const DEFAULT_SQUARE_SIZE = 48;
+
+document.querySelector('#show').addEventListener('click', () => {
+    const iconUrl = document.querySelector('select').selectedOptions[0].value;
+    let imgElement = document.createElement('img');
+    imgElement.src = iconUrl;
+    document.querySelector('#container').appendChild(imgElement);
+});
+
 document.addEventListener('DOMContentLoaded', (event) => {
     const gameContainer = document.getElementById('game-container');
     const winMessage = document.getElementById('win-message');
@@ -162,7 +175,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
         if(queryParams.get('size') === "auto") {
             return Math.min(Math.floor(window.innerWidth / rows), Math.floor(window.innerHeight / cols));
         } else {
-            return queryParams.get('size') ?? 48;
+            return queryParams.get('size') ?? DEFAULT_SQUARE_SIZE;
         }
     }
 
@@ -230,15 +243,14 @@ document.addEventListener('DOMContentLoaded', (event) => {
     };
 
     // Calculate the number of squares that fit per row/column
-    let squaresPerRow = queryParams.get('width') ?? Math.floor(window.innerWidth / squareSize);
-    let squaresPerColumn = queryParams.get('height') ?? Math.floor(window.innerHeight / squareSize);
+    let squaresPerRow = queryParams.get('width') ?? 3;
+    let squaresPerColumn = queryParams.get('height') ?? 3;
     let squareSize = getSquareSize(squaresPerRow, squaresPerColumn);
     let decodedColors = queryParams.get('colors') ? decodeWithErrorChecks(queryParams.get('colors'), squaresPerColumn, squaresPerRow) : null;
     let totalSquares = squaresPerRow * squaresPerColumn;
     console.log("Number", squaresPerRow, squaresPerColumn, decodedColors);
 
-    // 48/? = 20
-        // Set the innerHTML to the appropriate SVG based on the color
+    // Set the innerHTML to the appropriate SVG based on the color
     const RED_SVG = `
         <svg class="red-filter" width="${Math.floor(squareSize/(48/20))}px" height="${Math.floor(squareSize/(48/20))}px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
             <g id="Artboard-Copy" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
