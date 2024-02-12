@@ -8,9 +8,9 @@
         "type": "image/png"
       }
     ],
-    "start_url": "/?source=applaunch",
+    "start_url": "/",
     "background_color": "#ff0000",
-    "display": "browser",
+    "display": "standalone",
     "scope": "/",
     "theme_color": "#ff0000"
   }

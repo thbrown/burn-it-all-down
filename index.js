@@ -2,6 +2,8 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js');
 }
 
+const levels = ["?colors=QA&width=1&height=1&size=auto&level=1", "?colors=kA&width=1&height=3&size=auto&level=2", "?colors=GQ&width=1&height=4&size=auto&level=3", "?colors=SSFA&width=3&height=3&size=auto&level=4", "?colors=SSFA&width=3&height=4&size=auto&level=5", "?width=3&height=4&size=auto&level=6", "colors=SCpGRQ&width=4&height=4&size=auto&level=7"];
+
 const DEFAULT_SQUARE_SIZE = 48;
 
 document.addEventListener('DOMContentLoaded', (event) => {
@@ -235,7 +237,17 @@ document.addEventListener('DOMContentLoaded', (event) => {
         return false; // No winning state found
     };
 
+    // No params? Goto level 1
+    if (queryParams.values().next().done) {
+        window.location.href = levels[0];
+    } else {
+        console.log("NOT EMPTY", queryParams.values().next().done);
+    }
+
+    console.log("Params", queryParams.values())
+
     // Calculate the number of squares that fit per row/column
+    let level = queryParams.get('level');
     let squaresPerRow = queryParams.get('width') ?? 3;
     let squaresPerColumn = queryParams.get('height') ?? 3;
     let squareSize = getSquareSize(squaresPerRow, squaresPerColumn);
@@ -276,7 +288,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
         square.style.backgroundColor = colors[nextColorIndex];
 
         // Change the icon inside the square based on the new color
-        
         switch (colors[nextColorIndex]) {
             case 'red':
                 square.innerHTML = RED_SVG;
@@ -301,13 +312,22 @@ document.addEventListener('DOMContentLoaded', (event) => {
 
     // Function to show the win modal
     const showWinModal = () => {
-        winMessage.textContent = 'Congratulations! You won!';
+        if(level != undefined) {
+            if(parseInt(level) < levels.length) {
+                winMessage.textContent = `Congratulations! You beat level ${level}!`;
+            } else {
+                winMessage.textContent = `Congratulations! You beat the game!`;
+            }
+            document.getElementById('next-level').style.display = 'unset'; 
+        }
         document.getElementById('win-modal').style.display = 'block';
     };
 
     // Function to close the modal
     const closeModal = () => {
         document.getElementById('win-modal').style.display = 'none';
+        document.getElementById('next-level').style.display = 'none';
+
     };
 
     // Function to replay the game
@@ -319,6 +339,10 @@ document.addEventListener('DOMContentLoaded', (event) => {
         gameWon = false;
     };
 
+    const nextLevel = () => {
+        window.location.href = levels[parseInt(level)];
+    }
+
     const pushStateToUrl = () => {
         try {
             const colorState = encodeGridStateToBase64();
@@ -327,7 +351,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 height: squaresPerColumn,
                 colors: colorState
             }
-            window.history.pushState(JSON.stringify(state), '', `${document.location.pathname}?colors=${colorState}&width=${squaresPerRow}&height=${squaresPerColumn}&size=${queryParams.get('size') ?? 64}`);
+            const inputLevel = queryParams.get('level') == null ? "" : `&level=${queryParams.get('level')}`;
+            window.history.pushState(JSON.stringify(state), '', `${document.location.pathname}?colors=${colorState}&width=${squaresPerRow}&height=${squaresPerColumn}&size=${queryParams.get('size') ?? 64}${inputLevel}`);
             console.log("Modifying url", colorState, squaresPerRow, squaresPerColumn);
         } catch (e) {
             console.warn("Problem pushing state", e);
@@ -335,6 +360,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
     }
 
     document.getElementById('replay').addEventListener('click', replay);
+    document.getElementById('next-level').addEventListener('click', nextLevel);
 
     window.addEventListener("popstate", (e) => {
         let prevState = null;
